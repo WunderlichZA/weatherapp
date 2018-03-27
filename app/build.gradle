@@ -4,7 +4,7 @@ android {
     compileSdkVersion 26
     defaultConfig {
         applicationId "dev.hersteller.weatherupdate"
-        minSdkVersion 21
+        minSdkVersion 15
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"
@@ -28,4 +28,9 @@ dependencies {
 
     // retrofit  implementation 'com.squareup.retrofit2:retrofit:2.4.0'
     compile 'com.squareup.retrofit2:retrofit:2.4.0'
+    compile 'com.squareup.retrofit2:converter-gson:2.4.0'
+    // Okhttp
+    compile 'com.squareup.okhttp:okhttp:2.4.0'
+    // Gson
+    compile 'com.google.code.gson:gson:2.8.2'
 }

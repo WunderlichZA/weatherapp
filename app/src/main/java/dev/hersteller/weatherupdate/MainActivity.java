@@ -1,6 +1,7 @@
 package dev.hersteller.weatherupdate;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
@@ -14,27 +15,55 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.telecom.Call;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.text.SimpleDateFormat;
+
+import model.Weather;
+import model.WeatherModel;
+import rest.ApiService;
+import rest.RetroClient;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity implements LocationListener {
 
     private static final int LOCATION_PERMISSION_CODE = 1;
+    private static final String API_KEY = "53f9d8e4213222cf517d86dc406d67fc";
 
-    private TextView latituteField;
-    private TextView longitudeField;
+    private int latitude = 0;
+    private int longitude =  0;
     private LocationManager locationManager;
     Location location = null;
     private String provider;
+
+    private Button refreshButton;
+
+    TextView temperature, seaLevel, humidity, sunrise, sunset;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        latituteField = (TextView) findViewById(R.id.TextView02);
-        longitudeField = (TextView) findViewById(R.id.TextView04);
+        temperature =  findViewById(R.id.temp);
+        seaLevel =  findViewById(R.id.sea_level);
+        humidity =  findViewById(R.id.humidity);
+        sunrise = findViewById(R.id.sunrise);
+        sunset = findViewById(R.id.sunset);
+
+        refreshButton = findViewById(R.id.refresh_button);
+        refreshButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                getLocationManager();
+            }
+        });
 
         try {
             if (ContextCompat.checkSelfPermission(this,
@@ -135,10 +164,50 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         if (location != null) {
             System.out.println("Provider " + provider + " has been selected.");
             onLocationChanged(location);
+            makeHttpCall();
         } else {
-            latituteField.setText("Location not available");
-            longitudeField.setText("Location not available");
+            Toast.makeText(MainActivity.this,
+                    "Please check if your internet settings are set correctly.", Toast.LENGTH_LONG).show();
         }
+    }
+
+    public void makeHttpCall(){
+
+//        String lat = String.valueOf(location.getLatitude());
+//        String lon = String.valueOf(location.getLongitude());
+        // show a progress dialog while data is being fetched
+        final ProgressDialog dialog;
+        dialog = new ProgressDialog(MainActivity.this);
+        dialog.setTitle("Loading");
+        dialog.setMessage("Please wait");
+        dialog.show();
+        //Create an object of our api interface
+        ApiService api = RetroClient.getApiService();
+        // Calling JSON
+        retrofit2.Call<WeatherModel> call = api.getWeatherUpdate(latitude, longitude, API_KEY);
+        //Enqueue Callback will be call when get response
+        call.enqueue(new Callback<WeatherModel>() {
+            @Override
+            public void onResponse(retrofit2.Call<WeatherModel> call, Response<WeatherModel> response) {
+                // Dismiss dialog
+                dialog.dismiss();
+                Log.d("Main Activity", response.toString());
+                if(response.isSuccessful()){
+                    temperature.setText(String.valueOf((response.body().getMain().getTemp()) - 273.15));
+                    humidity.setText(String.valueOf(response.body().getMain().getHumidity()));
+                    sunrise.setText(String.valueOf(response.body().getSys().getSunrise()));
+                    sunset.setText(String.valueOf(response.body().getSys().getSunset()));
+                    seaLevel.setText(String.valueOf(response.body().getMain().getSeaLevel()));
+                }
+            }
+
+            @Override
+            public void onFailure(retrofit2.Call<WeatherModel> call, Throwable t) {
+                // Dismiss dialog
+                dialog.dismiss();
+                Toast.makeText(MainActivity.this, "Weather update not successful", Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     @Override
@@ -170,10 +239,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
     @Override
     public void onLocationChanged(Location location) {
-        int lat = (int) (location.getLatitude());
-        int lng = (int) (location.getLongitude());
-        latituteField.setText(String.valueOf(lat));
-        longitudeField.setText(String.valueOf(lng));
+        latitude = (int) (location.getLatitude());
+        longitude = (int) (location.getLongitude());
     }
 
     @Override
